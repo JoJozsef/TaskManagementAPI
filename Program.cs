@@ -2,13 +2,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Net.Http;
 using System.Net.Security;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 using TaskManagementAPI.Data;
 using TaskManagementAPI.Models;
 using TaskManagementAPI.Models.DTOs;
 using TaskManagementAPI.Services;
+using TaskManagementAPI.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +37,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<TaskService>();
 
 var app = builder.Build();
 
@@ -72,12 +76,12 @@ app.MapPost("/auth/login", async (LoginRequest request, AuthService service) =>
 app.MapPost("/projects", async (Project project, ProjectService service, HttpContext httpContext) => 
 {
     // User ID from JWT token
-    var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim.Value);
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+    
 
     // OwnerId settings
-    project.OwnerId = userId;
+    project.OwnerId = userId.Value;
 
     // Service call
     var createdProject = await service.CreateAsync(project);
@@ -91,11 +95,10 @@ app.MapPost("/projects", async (Project project, ProjectService service, HttpCon
 app.MapGet("/projects", async (ProjectService service, HttpContext httpContext) =>
 {
     // User ID from JWT token
-    var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim.Value);
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
 
-    var allProject = await service.GetAllByUserIdAsync(userId);
+    var allProject = await service.GetAllByUserIdAsync(userId.Value);
     return Results.Ok(allProject);
 
 }).RequireAuthorization();
@@ -104,9 +107,8 @@ app.MapGet("/projects", async (ProjectService service, HttpContext httpContext) 
 app.MapGet("/projects/{id}", async (int id, ProjectService service, HttpContext httpContext) =>
 {
     // User ID from JWT token
-    var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim.Value);
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
 
     var project = await service.GetByIdAsync(id);
     if(project == null) return Results.NotFound();
@@ -119,11 +121,10 @@ app.MapGet("/projects/{id}", async (int id, ProjectService service, HttpContext 
 app.MapPut("/projects/{id}", async (int id, Project updatedProject, ProjectService service, HttpContext httpContext) =>
 {
     // User ID from JWT token
-    var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim.Value);
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
 
-    var success = await service.UpdateAsync(id, updatedProject, userId);
+    var success = await service.UpdateAsync(id, updatedProject, userId.Value);
     return success ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization();
 
@@ -131,12 +132,76 @@ app.MapPut("/projects/{id}", async (int id, Project updatedProject, ProjectServi
 app.MapDelete("/projects/{id}", async (int id, ProjectService service, HttpContext httpContext) => 
 {
     // User ID from JWT token
-    var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim.Value);
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
 
-    var success = await service.DeleteAsync(id, userId);
+    var success = await service.DeleteAsync(id, userId.Value);
     return success ? Results.NoContent(): Results.NotFound();
+}).RequireAuthorization();
+
+// Task endpoints
+// Post
+app.MapPost("/projects/{projectId}/tasks", async (int projectId, ProjectTask task, TaskService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    task.ProjectId = projectId;
+
+    var createdTask = await service.CreateAsync(task, userId.Value);
+
+    return Results.Created($"/tasks/{createdTask.Id}", createdTask);
+}).RequireAuthorization();
+
+// Get projects task
+app.MapGet("/projects/{projectId}/tasks", async (int projectId, TaskService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var tasks = await service.GetAllByProjectIdAsync(projectId, userId.Value);
+
+    return Results.Ok(tasks);
+}).RequireAuthorization();
+
+// Get a task
+app.MapGet("/tasks/{id}", async (int id, TaskService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var task = await service.GetByIdAsync(id, userId.Value);
+    if (task == null) return Results.NotFound();
+
+    return Results.Ok(task);
+
+}).RequireAuthorization();
+
+// Put task
+app.MapPut("/tasks/{id}", async (int id, ProjectTask updatedTask ,TaskService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var success = await service.UpdateAsync(id, updatedTask, userId.Value);
+    return success ? Results.NoContent() : Results.NotFound();
+    
+}).RequireAuthorization();
+
+// Delete task
+app.MapDelete("/tasks/{id}", async (int id, TaskService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var success = await service.DeleteAsync(id, userId.Value);
+    return success ? Results.NoContent() : Results.NotFound();
+
 }).RequireAuthorization();
 
 
