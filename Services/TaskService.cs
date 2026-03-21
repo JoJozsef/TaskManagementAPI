@@ -1,6 +1,7 @@
 ﻿using TaskManagementAPI.Data;
 using TaskManagementAPI.Models;
 using Microsoft.EntityFrameworkCore;
+using TaskStatus = TaskManagementAPI.Models.TaskStatus;
 
 namespace TaskManagementAPI.Services
 {
@@ -92,6 +93,21 @@ namespace TaskManagementAPI.Services
 
             _dbContext.Tasks.Remove(task);
             await _dbContext.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> UpdateStatusAsync(int id, TaskStatus newStatus, int userId) 
+        { 
+            // Task search
+            var task = await GetByIdAsync(id, userId);
+            if (task == null) return false;
+
+            // Status update
+            task.Status = newStatus;
+
+            // save
+            await _dbContext.SaveChangesAsync();
+
             return true;
         }
     }

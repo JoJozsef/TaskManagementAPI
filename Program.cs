@@ -12,12 +12,39 @@ using TaskManagementAPI.Models;
 using TaskManagementAPI.Models.DTOs;
 using TaskManagementAPI.Services;
 using TaskManagementAPI.Extensions;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 builder.Services.AddDbContext<TaskDbContext>(options => options.UseSqlite("Data Source=tasks.db"));
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ProjectService>();
@@ -193,7 +220,7 @@ app.MapPut("/tasks/{id}", async (int id, ProjectTask updatedTask ,TaskService se
 }).RequireAuthorization();
 
 // Delete task
-app.MapDelete("/tasks/{id}", async (int id, TaskService service, HttpContext httpContext) => 
+app.MapDelete("/tasks/{id}/status", async (int id, TaskService service, HttpContext httpContext) => 
 {
     // User ID from JWT token
     var userId = httpContext.GetUserId();
@@ -202,6 +229,17 @@ app.MapDelete("/tasks/{id}", async (int id, TaskService service, HttpContext htt
     var success = await service.DeleteAsync(id, userId.Value);
     return success ? Results.NoContent() : Results.NotFound();
 
+}).RequireAuthorization();
+
+// Update Status
+app.MapPatch("/tasks/{id}/", async (int id, UpdateTaskStatusRequest request, TaskService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var success = await service.UpdateStatusAsync(id, request.Status, userId.Value);
+    return success ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization();
 
 
