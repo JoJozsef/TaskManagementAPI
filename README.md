@@ -7,10 +7,12 @@ Task and project management REST API with JWT authentication and Kanban board fu
 - ✅ JWT Authentication (Register, Login)
 - ✅ Project management (CRUD)
 - ✅ Task management (CRUD)
+- ✅ Comment system (Task comments with authorization)
 - ✅ Kanban board (Status: To Do, In Progress, Done)
 - ✅ Priority levels (Low, Medium, High)
 - ✅ Authorization (only project owners can modify)
 - ✅ Due dates and task assignments
+- ✅ Proper error handling (HTTP status codes)
 
 ## Tech Stack
 
@@ -72,6 +74,11 @@ https://localhost:7204/swagger
 - `GET /tasks/{id}` - Get task by ID
 - `PUT /tasks/{id}` - Update task
 - `DELETE /tasks/{id}` - Delete task
+
+### Comments
+- `POST /tasks/{taskId}/comments` - Create comment on task
+- `GET /tasks/{taskId}/comments` - Get all comments for a task
+- `DELETE /comments/{id}` - Delete comment (author or project owner)
 
 ## Project Structure
 ```
@@ -141,6 +148,24 @@ POST /projects/1/tasks
   "status": 0,
   "dueDate": "2025-03-30T10:00:00"
 }
+```
+
+6. Create a comment:
+```json
+POST /tasks/1/comments
+{
+  "content": "Great progress on this task!"
+}
+```
+
+7. Get task comments:
+```
+GET /tasks/1/comments
+```
+
+8. Delete a comment:
+```
+DELETE /comments/1
 ```
 
 ## Author
