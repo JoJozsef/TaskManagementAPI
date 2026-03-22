@@ -17,7 +17,7 @@ namespace TaskManagementAPI.Services
         {
             // Validation + Authorization
             var project = await ValidateTaskAuthorizationAsync(comment.TaskId, userId);
-            if (project == null) throw new Exception("Unauthorized or Task not found");
+            if (project == null) return null;
 
             // Comment creation
             comment.CreatedAt = DateTime.UtcNow;
@@ -30,7 +30,7 @@ namespace TaskManagementAPI.Services
         {
             // Validation + Authorization
             var project = await ValidateTaskAuthorizationAsync(taskId, userId);
-            if (project == null) throw new Exception("Unauthorized or Task not found");
+            if (project == null) return null;
 
             // Get comments
             return await _dbContext.Comments.Where(c => c.TaskId == taskId).ToListAsync();

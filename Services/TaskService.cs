@@ -13,14 +13,14 @@ namespace TaskManagementAPI.Services
             _dbContext = dbContext;
         }
 
-        public async Task<ProjectTask> CreateAsync(ProjectTask task, int userId)
+        public async Task<ProjectTask?> CreateAsync(ProjectTask task, int userId)
         {
             // Project search
             var project = await _dbContext.Projects.FindAsync(task.ProjectId);
-            if (project == null) throw new Exception("Project not found");
+            if (project == null) return null;
 
             // Auth check
-            if (project.OwnerId != userId) throw new Exception("Unauthorized");
+            if (project.OwnerId != userId) return null;
 
             // Task settings
             task.CreatedAt = DateTime.UtcNow;
@@ -34,14 +34,14 @@ namespace TaskManagementAPI.Services
             return task;
         }
 
-        public async Task<List<ProjectTask>> GetAllByProjectIdAsync(int projectId, int userId)
+        public async Task<List<ProjectTask>?> GetAllByProjectIdAsync(int projectId, int userId)
         {
             // Project search
             var project = await _dbContext.Projects.FindAsync(projectId);
-            if (project == null) throw new Exception("Project not found");
+            if (project == null) return null;
 
             // Auth check
-            if (project.OwnerId != userId) throw new Exception("Unauthorized");
+            if (project.OwnerId != userId) return null;
 
             // Tasks
             return await _dbContext.Tasks

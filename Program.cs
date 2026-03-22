@@ -201,6 +201,7 @@ app.MapPost("/projects/{projectId}/tasks", async (int projectId, ProjectTask tas
     task.ProjectId = projectId;
 
     var createdTask = await service.CreateAsync(task, userId.Value);
+    if (createdTask == null) return Results.Forbid();
 
     return Results.Created($"/tasks/{createdTask.Id}", createdTask);
 }).RequireAuthorization();
@@ -213,6 +214,7 @@ app.MapGet("/projects/{projectId}/tasks", async (int projectId, TaskService serv
     if (userId == null) return Results.Unauthorized();
 
     var tasks = await service.GetAllByProjectIdAsync(projectId, userId.Value);
+    if (createdTask == null) return Results.Forbid();
 
     return Results.Ok(tasks);
 }).RequireAuthorization();
@@ -244,7 +246,7 @@ app.MapPut("/tasks/{id}", async (int id, ProjectTask updatedTask ,TaskService se
 }).RequireAuthorization();
 
 // Delete task
-app.MapDelete("/tasks/{id}/status", async (int id, TaskService service, HttpContext httpContext) => 
+app.MapDelete("/tasks/{id}", async (int id, TaskService service, HttpContext httpContext) => 
 {
     // User ID from JWT token
     var userId = httpContext.GetUserId();
@@ -256,7 +258,7 @@ app.MapDelete("/tasks/{id}/status", async (int id, TaskService service, HttpCont
 }).RequireAuthorization();
 
 // Update Status
-app.MapPatch("/tasks/{id}/", async (int id, UpdateTaskStatusRequest request, TaskService service, HttpContext httpContext) => 
+app.MapPatch("/tasks/{id}/status", async (int id, UpdateTaskStatusRequest request, TaskService service, HttpContext httpContext) => 
 {
     // User ID from JWT token
     var userId = httpContext.GetUserId();
@@ -275,7 +277,8 @@ app.MapPost("/tasks/{taskId}/comments", async (int taskId, Comment comment, Comm
 
     comment.TaskId = taskId;
 
-    var createComment = await service.CreateAsync(comment, userId.Value);
+    var createdComment = await service.CreateAsync(comment, userId.Value);
+    if (createdComment == null) return Results.Forbid();
 
     return Results.Created($"/comments/{createdComment.Id}", createdComment);
 }).RequireAuthorization();
@@ -286,9 +289,10 @@ app.MapGet("/tasks/{taskId}/comments", async (int taskId, CommentService service
     var userId = httpContext.GetUserId();
     if (userId == null) return Results.Unauthorized();
 
-    var comment = await service.GetAllByTaskIdAsync(taskId, userId.Value);
+    var comments = await service.GetAllByTaskIdAsync(taskId, userId.Value);
+    if (comments == null) return Results.Forbid();
 
-    return Results.Ok(comment);
+    return Results.Ok(comments);
 }).RequireAuthorization();
 
 app.MapDelete("/comments/{id}", async (int id, CommentService service, HttpContext httpContext) =>
