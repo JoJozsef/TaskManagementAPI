@@ -65,6 +65,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TaskService>();
+builder.Services.AddScoped<CommentService>();
 
 var app = builder.Build();
 
@@ -78,6 +79,29 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Seed data (dev. only)
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<TaskDbContext>();
+
+    if (!context.Users.Any())
+    {
+        // Hash jelszó
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword("Test1234!");
+
+        // User létrehozása
+        var user = new User
+        {
+            Email = "test@example.com",
+            PasswordHash = passwordHash,
+            Name = "Test User",
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(user);
+        context.SaveChanges();
+    }
+}
 
 // Endpoints
 // register
@@ -242,6 +266,41 @@ app.MapPatch("/tasks/{id}/", async (int id, UpdateTaskStatusRequest request, Tas
     return success ? Results.NoContent() : Results.NotFound();
 }).RequireAuthorization();
 
+// CommentService endpoints
+app.MapPost("/tasks/{taskId}/comments", async (int taskId, Comment comment, CommentService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    comment.TaskId = taskId;
+
+    var createComment = await service.CreateAsync(comment, userId.Value);
+
+    return Results.Created($"/comments/{createdComment.Id}", createdComment);
+}).RequireAuthorization();
+
+app.MapGet("/tasks/{taskId}/comments", async (int taskId, CommentService service, HttpContext httpContext) => 
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var comment = await service.GetAllByTaskIdAsync(taskId, userId.Value);
+
+    return Results.Ok(comment);
+}).RequireAuthorization();
+
+app.MapDelete("/comments/{id}", async (int id, CommentService service, HttpContext httpContext) =>
+{
+    // User ID from JWT token
+    var userId = httpContext.GetUserId();
+    if (userId == null) return Results.Unauthorized();
+
+    var success = await service.DeleteAsync(id, userId.Value);
+    return success ? Results.NoContent() : Results.NotFound();
+})
+.RequireAuthorization();
 
 app.Run();
 public partial class Program { }
