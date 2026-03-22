@@ -20,7 +20,7 @@ namespace TaskManagementAPI.Services
             _dbContext = dbContext;
             _configuration = configuration;
         }
-        public async Task<User> RegisterAsync(RegisterRequest request) 
+        public async Task<User?> RegisterAsync(RegisterRequest request) 
         {
             // Email check
             var existingUser = await _dbContext.Users
@@ -28,7 +28,7 @@ namespace TaskManagementAPI.Services
 
             if (existingUser != null) 
             {
-                throw new Exception("Email already exists");
+                return null;
             }
 
             // Password hash

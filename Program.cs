@@ -108,6 +108,7 @@ using (var scope = app.Services.CreateScope())
 app.MapPost("/auth/register", async (RegisterRequest request, AuthService service) => 
 {
     var user = await service.RegisterAsync(request);
+    if (user == null) return Results.Conflict(new { error = "Email already exists" });
     return Results.Created($"/users/{user.Id}", new { 
         user.Id,
         user.Email,
@@ -214,7 +215,7 @@ app.MapGet("/projects/{projectId}/tasks", async (int projectId, TaskService serv
     if (userId == null) return Results.Unauthorized();
 
     var tasks = await service.GetAllByProjectIdAsync(projectId, userId.Value);
-    if (createdTask == null) return Results.Forbid();
+    if (tasks == null) return Results.Forbid();
 
     return Results.Ok(tasks);
 }).RequireAuthorization();
